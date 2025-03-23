@@ -6,7 +6,7 @@ export default defineNuxtConfig({
   
   devtools: { enabled: true },
 
-  modules: ['@nuxt/icon', '@nuxtjs/tailwindcss', 'shadcn-nuxt'],
+  modules: ['@nuxt/icon', '@nuxtjs/tailwindcss', 'shadcn-nuxt', 'motion-v/nuxt'],
 
   shadcn: {
     /**
