@@ -292,7 +292,7 @@ watch(
                   v-else
                   :message="message"
                   :isLoading="isLoading"
-                  :handleRegenerate="handleRegenerate"
+                  @regenerate="handleRegenerate"
                 />
               </template>
 

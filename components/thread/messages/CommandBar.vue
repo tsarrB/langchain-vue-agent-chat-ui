@@ -19,7 +19,7 @@ const {
   isLoading: boolean;
 }>();
 
-const isEditing = defineModel<boolean>('isEditing', { required: false });
+const isEditing = defineModel<boolean>("isEditing", { required: false });
 
 onMounted(() => {
   if (isHumanMessage && isAiMessage) {
