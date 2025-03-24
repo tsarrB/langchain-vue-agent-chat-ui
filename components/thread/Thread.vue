@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { v4 as uuidv4 } from "uuid";
 import { motion } from "motion-v";
+import { toast } from 'vue-sonner'
 import { useRouteQuery } from "@vueuse/router";
 import type { Message, Checkpoint } from "@langchain/langgraph-sdk";
 import { ref } from "vue";
 import { cn } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
-import { Textarea } from "~/components/ui/textarea";
 import ThreadHistory from "~/components/thread/history/index.vue";
 import HumanMessage from "~/components/thread/messages/HumanMessage.vue";
 import { TooltipIconButton } from "~/components/ui/tooltip-icon-button";
@@ -40,6 +40,7 @@ const hideToolCalls = useRouteQuery("hideToolCalls", "false", {
 
 const input = ref("");
 const firstTokenReceived = ref(false);
+const lastError = ref<string | undefined>(undefined);
 
 const threadId = useRouteQuery("threadId");
 
@@ -47,6 +48,7 @@ const { stream } = useStream();
 
 const messages = computed(() => stream.messages);
 const isLoading = computed(() => stream.isLoading);
+const prevMessageLength = ref(0);
 
 const chatStarted = computed(() => {
   return !!threadId.value || !!messages.value.length;
@@ -54,12 +56,12 @@ const chatStarted = computed(() => {
 
 const handleRegenerate = (parentCheckpoint: Checkpoint | null | undefined) => {
   // Do this so the loading state is correct
-  // prevMessageLength.current = prevMessageLength.current - 1;
-  // setFirstTokenReceived(false);
-  // stream.submit(undefined, {
-  //   checkpoint: parentCheckpoint,
-  //   streamMode: ["values"],
-  // });
+  prevMessageLength.value = prevMessageLength.value - 1;
+  firstTokenReceived.value = false;
+  stream.submit(undefined, {
+    checkpoint: parentCheckpoint,
+    streamMode: ["values"],
+  });
 };
 
 const handleSubmit = async () => {
@@ -92,6 +94,51 @@ const handleSubmit = async () => {
 
   input.value = "";
 };
+
+watch(() => stream.error, (error) => {
+  if (!stream.error) {
+    lastError.value = undefined;
+    return;
+  }
+
+  try {
+    const message = (stream.error as any).message;
+    if (!message || lastError.value === message) {
+      // Message has already been logged. do not modify ref, return early.
+      return;
+    }
+
+    // Message is defined, and it has not been logged yet. Save it, and send the error
+    lastError.value = message;
+
+    toast.error("An error occurred. Please try again.", {
+      description: `
+        <p>
+          <strong>Error:</strong> <code>${message}</code>
+        </p>
+      `,
+      richColors: true,
+      closeButton: true,
+    });
+
+  } catch {
+    // no-op
+  }
+});
+
+watch(() => messages.value, (val) => {
+    if (
+      val.length !== prevMessageLength.value &&
+      val?.length &&
+      val[val.length - 1].type === "ai"
+    ) {
+      firstTokenReceived.value = true;
+    }
+
+    prevMessageLength.value = val.length;
+  }, {
+    immediate: true,
+  })
 </script>
 
 <template>
@@ -288,8 +335,7 @@ const handleSubmit = async () => {
                       <div class="flex items-center space-x-2">
                         <Switch
                           id="render-tool-calls"
-                          :checked="hideToolCalls ?? false"
-                          @checked-change="hideToolCalls = !hideToolCalls"
+                          v-model="hideToolCalls"
                         />
                         <Label
                           htmlFor="render-tool-calls"
@@ -299,6 +345,7 @@ const handleSubmit = async () => {
                         </Label>
                       </div>
                     </div>
+                    
                     <Button
                       v-if="stream.isLoading"
                       key="stop"
