@@ -22,6 +22,7 @@ import {
 } from "lucide-vue-next";
 import LangGraphLogoSVG from "~/components/icons/langgraph.vue";
 import { DO_NOT_RENDER_ID_PREFIX } from "~/lib/ensure-tool-responses";
+import ObserverContainer from "../ObserverContainer.vue";
 
 const isLargeScreen = useMediaQuery("(min-width: 1024px)");
 const chatHistoryOpen = useRouteQuery("chatHistoryOpen", "false", {
@@ -45,10 +46,7 @@ const threadId = useRouteQuery("threadId");
 const { stream } = useStream();
 
 const messages = computed(() => stream.messages);
-const isLoading = computed(() => {
-  console.log(stream.isLoading);
-  return stream.isLoading;
-});
+const isLoading = computed(() => stream.isLoading);
 
 const chatStarted = computed(() => {
   return !!threadId.value || !!messages.value.length;
@@ -208,9 +206,8 @@ const handleSubmit = async () => {
         />
       </div>
 
-      <!-- StickToBottom -->
       <div class="relative flex-1 overflow-hidden">
-        <div
+        <ObserverContainer
           style="width: 100%; height: 100%"
           :class="
             cn(
@@ -220,52 +217,61 @@ const handleSubmit = async () => {
             )
           "
         >
-          <div class="pt-8 pb-16  max-w-3xl mx-auto flex flex-col gap-4 w-full">
-            <template
-              v-for="(message, index) in messages.filter(
-                (m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX)
-              )"
-              :key="message.id || `${message.type}-${index}`"
+          <template #default="{ isAtBottom, scrollToBottom }">
+            <div
+              class="pt-8 pb-16 max-w-3xl mx-auto flex flex-col gap-4 w-full"
             >
-              <HumanMessage
-                v-if="message.type === 'human'"
-                :message="message"
-                :isLoading="isLoading"
+              <template
+                v-for="(message, index) in messages.filter(
+                  (m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX)
+                )"
+                :key="message.id || `${message.type}-${index}`"
+              >
+                <HumanMessage
+                  v-if="message.type === 'human'"
+                  :message="message"
+                  :isLoading="isLoading"
+                />
+
+                <AssistantMessage
+                  v-else
+                  :message="message"
+                  :isLoading="isLoading"
+                  :handleRegenerate="handleRegenerate"
+                />
+              </template>
+
+              <AssistantMessageLoading
+                v-if="isLoading && !firstTokenReceived"
               />
-
-              <AssistantMessage
-                v-else
-                :message="message"
-                :isLoading="isLoading"
-                :handleRegenerate="handleRegenerate"
-              />
-            </template>
-
-            <AssistantMessageLoading v-if="isLoading && !firstTokenReceived" />
-          </div>
-
-          <div
-            class="sticky flex flex-col items-center gap-8 bottom-0 px-4 bg-white"
-          >
-            <div v-if="!chatStarted" class="flex gap-3 items-center">
-              <LangGraphLogoSVG class="flex-shrink-0 h-8" />
-              <h1 class="text-2xl font-semibold tracking-tight">Agent Chat</h1>
             </div>
 
-            <ScrollToBottom
-              class="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 animate-in fade-in-0 zoom-in-95"
-            />
-
             <div
-              class="bg-muted rounded-2xl border shadow-xs mx-auto mb-8 w-full max-w-3xl relative z-10"
+              class="sticky flex flex-col items-center gap-8 bottom-0 px-4 bg-white"
             >
-              <form
-                @submit.prevent="handleSubmit"
-                class="grid grid-rows-[1fr_auto] gap-2 max-w-3xl mx-auto"
+              <div v-if="!chatStarted" class="flex gap-3 items-center">
+                <LangGraphLogoSVG class="flex-shrink-0 h-8" />
+                <h1 class="text-2xl font-semibold tracking-tight">
+                  Agent Chat
+                </h1>
+              </div>
+
+              <ScrollToBottom
+                v-show="!isAtBottom"
+                class="absolute bottom-full left-1/2 -translate-x-1/2 mb-4 animate-in fade-in-0 zoom-in-95"
+                @click="scrollToBottom"
+              />
+
+              <div
+                class="bg-muted rounded-2xl border shadow-xs mx-auto mb-8 w-full max-w-3xl relative z-10"
               >
-                <textarea
-                  v-model="input"
-                  @keydown="(e) => {
+                <form
+                  @submit.prevent="handleSubmit"
+                  class="grid grid-rows-[1fr_auto] gap-2 max-w-3xl mx-auto"
+                >
+                  <textarea
+                    v-model="input"
+                    @keydown="(e) => {
                       if (e.key === 'Enter' && !e.shiftKey && !e.metaKey) {
                         e.preventDefault();
                         const el = e.target as HTMLElement | undefined;
@@ -273,48 +279,49 @@ const handleSubmit = async () => {
                         form?.requestSubmit();
                       }
                     }"
-                  placeholder="Type your message..."
-                  class="p-3.5 pb-0 border-none bg-transparent field-sizing-content shadow-none ring-0 outline-none focus:outline-none focus:ring-0 resize-none"
-                />
+                    placeholder="Type your message..."
+                    class="p-3.5 pb-0 border-none bg-transparent field-sizing-content shadow-none ring-0 outline-none focus:outline-none focus:ring-0 resize-none"
+                  />
 
-                <div class="flex items-center justify-between p-2 pt-4">
-                  <div>
-                    <div class="flex items-center space-x-2">
-                      <Switch
-                        id="render-tool-calls"
-                        :checked="hideToolCalls ?? false"
-                        @checked-change="hideToolCalls = !hideToolCalls"
-                      />
-                      <Label
-                        htmlFor="render-tool-calls"
-                        class="text-sm text-gray-600"
-                      >
-                        Hide Tool Calls
-                      </Label>
+                  <div class="flex items-center justify-between p-2 pt-4">
+                    <div>
+                      <div class="flex items-center space-x-2">
+                        <Switch
+                          id="render-tool-calls"
+                          :checked="hideToolCalls ?? false"
+                          @checked-change="hideToolCalls = !hideToolCalls"
+                        />
+                        <Label
+                          htmlFor="render-tool-calls"
+                          class="text-sm text-gray-600"
+                        >
+                          Hide Tool Calls
+                        </Label>
+                      </div>
                     </div>
-                  </div>
-                  <Button
-                    v-if="stream.isLoading"
-                    key="stop"
-                    @click="stream.stop()"
-                  >
-                    <LoaderCircle class="w-4 h-4 animate-spin" />
-                    Cancel
-                  </Button>
+                    <Button
+                      v-if="stream.isLoading"
+                      key="stop"
+                      @click="stream.stop()"
+                    >
+                      <LoaderCircle class="w-4 h-4 animate-spin" />
+                      Cancel
+                    </Button>
 
-                  <Button
-                    v-else
-                    type="submit"
-                    class="transition-all shadow-md"
-                    :disabled="isLoading || !input.trim()"
-                  >
-                    Send
-                  </Button>
-                </div>
-              </form>
+                    <Button
+                      v-else
+                      type="submit"
+                      class="transition-all shadow-md"
+                      :disabled="isLoading || !input.trim()"
+                    >
+                      Send
+                    </Button>
+                  </div>
+                </form>
+              </div>
             </div>
-          </div>
-        </div>
+          </template>
+        </ObserverContainer>
       </div>
     </motion.div>
   </div>
