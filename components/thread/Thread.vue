@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { v4 as uuidv4 } from "uuid";
 import { motion } from "motion-v";
-import { toast } from 'vue-sonner'
+import { toast } from "vue-sonner";
 import { useRouteQuery } from "@vueuse/router";
 import type { Message, Checkpoint } from "@langchain/langgraph-sdk";
 import { ref } from "vue";
@@ -54,6 +54,10 @@ const chatStarted = computed(() => {
   return !!threadId.value || !!messages.value.length;
 });
 
+const newThread = () => {
+  threadId.value = undefined;
+};
+
 const handleRegenerate = (parentCheckpoint: Checkpoint | null | undefined) => {
   // Do this so the loading state is correct
   prevMessageLength.value = prevMessageLength.value - 1;
@@ -64,9 +68,7 @@ const handleRegenerate = (parentCheckpoint: Checkpoint | null | undefined) => {
   });
 };
 
-const handleSubmit = async () => {
-  console.log(stream);
-
+const handleSubmit = () => {
   if (!input.value.trim()) return;
 
   const newHumanMessage: Message = {
@@ -95,38 +97,42 @@ const handleSubmit = async () => {
   input.value = "";
 };
 
-watch(() => stream.error, (error) => {
-  if (!stream.error) {
-    lastError.value = undefined;
-    return;
-  }
-
-  try {
-    const message = (stream.error as any).message;
-    if (!message || lastError.value === message) {
-      // Message has already been logged. do not modify ref, return early.
+watch(
+  () => stream.error,
+  (error) => {
+    if (!stream.error) {
+      lastError.value = undefined;
       return;
     }
 
-    // Message is defined, and it has not been logged yet. Save it, and send the error
-    lastError.value = message;
+    try {
+      const message = (stream.error as any).message;
+      if (!message || lastError.value === message) {
+        // Message has already been logged. do not modify ref, return early.
+        return;
+      }
 
-    toast.error("An error occurred. Please try again.", {
-      description: `
+      // Message is defined, and it has not been logged yet. Save it, and send the error
+      lastError.value = message;
+
+      toast.error("An error occurred. Please try again.", {
+        description: `
         <p>
           <strong>Error:</strong> <code>${message}</code>
         </p>
       `,
-      richColors: true,
-      closeButton: true,
-    });
-
-  } catch {
-    // no-op
+        richColors: true,
+        closeButton: true,
+      });
+    } catch {
+      // no-op
+    }
   }
-});
+);
 
-watch(() => messages.value, (val) => {
+watch(
+  () => messages.value,
+  (val) => {
     if (
       val.length !== prevMessageLength.value &&
       val?.length &&
@@ -136,9 +142,11 @@ watch(() => messages.value, (val) => {
     }
 
     prevMessageLength.value = val.length;
-  }, {
+  },
+  {
     immediate: true,
-  })
+  }
+);
 </script>
 
 <template>
@@ -221,7 +229,6 @@ watch(() => messages.value, (val) => {
 
           <motion.button
             class="flex gap-2 items-center cursor-pointer"
-            @click="threadId = null"
             :animate="{
               marginLeft: !chatHistoryOpen ? 48 : 0,
             }"
@@ -230,6 +237,7 @@ watch(() => messages.value, (val) => {
               stiffness: 300,
               damping: 30,
             }"
+            @click="newThread"
           >
             <LangGraphLogoSVG :width="32" :height="32" />
             <span class="text-xl font-semibold tracking-tight">
@@ -243,7 +251,7 @@ watch(() => messages.value, (val) => {
           class="p-4"
           tooltip="New thread"
           variant="ghost"
-          @click="threadId = null"
+          @click="newThread"
         >
           <SquarePen class="size-5" />
         </TooltipIconButton>
@@ -345,7 +353,7 @@ watch(() => messages.value, (val) => {
                         </Label>
                       </div>
                     </div>
-                    
+
                     <Button
                       v-if="stream.isLoading"
                       key="stop"

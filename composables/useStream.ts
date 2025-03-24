@@ -157,11 +157,11 @@ export const useStream = createSharedComposable(() => {
   checkConnection();
 
   // Create the stream with LangChain
-  const streamValue = computed(() => useLangChainStream({
+  const streamValue = useLangChainStream({
     apiUrl: apiUrl.value,
     apiKey: apiKey.value ?? undefined,
     assistantId: assistantId.value,
-    threadId: threadId.value ?? null,
+    threadId: threadId ?? null,
     onCustomEvent: (event: UIMessage | RemoveUIMessage, options: any) => {
       options.mutate((prev: StateType) => {
         const ui = uiMessageReducer(prev.ui ?? [], event);
@@ -169,7 +169,8 @@ export const useStream = createSharedComposable(() => {
       });
     },
     onThreadId: updateThreadId
-  }));
+  });;
+
   
   // Return reactive stream interface
   return toReactive({

@@ -25,6 +25,7 @@ const { side = 'bottom', tooltip, ...rest } = defineProps<ButtonProps & {
           size="icon"
           class="size-6 p-1"
           ref={ref}
+          @click="$emit('click')"
         >
           <slot />
           <span class="sr-only">{{ tooltip }}</span>

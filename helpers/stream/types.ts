@@ -9,7 +9,7 @@ export interface StreamOptions<TValues = any, TUpdateType = any, TCustomEventTyp
   apiUrl: string;
   apiKey?: string;
   assistantId: string;
-  threadId?: string | null;
+  threadId?: MaybeRef<string | null>;
   messagesKey?: string;
   onError?: (error: Error) => void;
   onFinish?: (state: any) => void;
