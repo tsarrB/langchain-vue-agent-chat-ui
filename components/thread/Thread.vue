@@ -9,7 +9,7 @@ import { Button } from "~/components/ui/button";
 import { Textarea } from "~/components/ui/textarea";
 import ThreadHistory from "~/components/thread/history/index.vue";
 import HumanMessage from "~/components/thread/messages/HumanMessage.vue";
-import TooltipIconButton from "~/components/ui/tooltip-icon-button.vue";
+import { TooltipIconButton } from "~/components/ui/tooltip-icon-button";
 import AssistantMessage from "~/components/thread/messages/AssistantMessage.vue";
 import AssistantMessageLoading from "~/components/thread/messages/AssistantMessageLoading.vue";
 import ScrollToBottom from "~/components/thread/ScrollToBottom.vue";
@@ -47,7 +47,7 @@ const { stream } = useStream();
 const messages = computed(() => stream.messages);
 const isLoading = computed(() => {
   console.log(stream.isLoading);
-  return stream.isLoading
+  return stream.isLoading;
 });
 
 const chatStarted = computed(() => {
@@ -97,7 +97,7 @@ const handleSubmit = async () => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col">
+  <div class="flex w-full h-screen overflow-hidden">
     <div class="relative lg:flex hidden">
       <motion.div
         class="absolute h-full border-r bg-white overflow-hidden z-20"
@@ -209,7 +209,7 @@ const handleSubmit = async () => {
       </div>
 
       <!-- StickToBottom -->
-        <div class="relative flex-1 overflow-hidden">
+      <div class="relative flex-1 overflow-hidden">
         <div
           style="width: 100%; height: 100%"
           :class="
@@ -220,7 +220,7 @@ const handleSubmit = async () => {
             )
           "
         >
-          <div>
+          <div class="pt-8 pb-16  max-w-3xl mx-auto flex flex-col gap-4 w-full">
             <template
               v-for="(message, index) in messages.filter(
                 (m) => !m.id?.startsWith(DO_NOT_RENDER_ID_PREFIX)

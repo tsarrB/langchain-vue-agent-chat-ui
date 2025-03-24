@@ -178,7 +178,6 @@ export const useStream = createSharedComposable(() => {
     setApiKey,
     threadId,
     stream: toReactive(streamValue),
-    // ...(streamValue.value ?? {})
   });
 });
 
