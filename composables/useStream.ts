@@ -1,12 +1,11 @@
-import { useRouter } from '#app';
+import { useRouter } from "#app";
 import { type Message } from "@langchain/langgraph-sdk";
-import { useStream as useLangChainStream } from "~/helpers/stream";
+import { useStream as useLangChainStream } from "~/lib/stream";
 import { useRoute } from "#app";
 import { getApiKey } from "~/lib/api-key";
 import { useThreads } from "./useTread";
 import { toast } from "vue-sonner";
-import { createSharedComposable, toReactive } from '@vueuse/core';
-import { computed, ref, watch, reactive } from 'vue';
+import { createSharedComposable, toReactive } from "@vueuse/core";
 
 // --- UI Message types ---
 export interface UIMessage {
@@ -15,9 +14,9 @@ export interface UIMessage {
   name: string;
   props: Record<string, unknown>;
   metadata: {
-      run_id: string;
-      message_id?: string;
-      [key: string]: unknown;
+    run_id: string;
+    message_id?: string;
+    [key: string]: unknown;
   };
 }
 
@@ -30,21 +29,23 @@ export interface RemoveUIMessage {
 export type StateType = { messages: Message[]; ui?: UIMessage[] };
 
 // --- UI Message handling ---
-function uiMessageReducer(state: UIMessage[], update: UIMessage | RemoveUIMessage | (UIMessage | RemoveUIMessage)[]) {
+function uiMessageReducer(
+  state: UIMessage[],
+  update: UIMessage | RemoveUIMessage | (UIMessage | RemoveUIMessage)[]
+) {
   const events = Array.isArray(update) ? update : [update];
   let newState = state.slice();
   for (const event of events) {
-      if (event.type === "remove-ui") {
-          newState = newState.filter((ui) => ui.id !== event.id);
-          continue;
-      }
-      const index = state.findIndex((ui) => ui.id === event.id);
-      if (index !== -1) {
-          newState[index] = event;
-      }
-      else {
-          newState.push(event);
-      }
+    if (event.type === "remove-ui") {
+      newState = newState.filter((ui) => ui.id !== event.id);
+      continue;
+    }
+    const index = state.findIndex((ui) => ui.id === event.id);
+    if (index !== -1) {
+      newState[index] = event;
+    } else {
+      newState.push(event);
+    }
   }
   return newState;
 }
@@ -56,7 +57,7 @@ async function sleep(ms = 4000) {
 
 async function checkGraphStatus(
   apiUrl: string,
-  apiKey: string | null,
+  apiKey: string | null
 ): Promise<boolean> {
   try {
     const res = await fetch(`${apiUrl}/info`, {
@@ -77,13 +78,14 @@ async function checkGraphStatus(
 // --- API connection handling function ---
 function useApiConnection() {
   const route = useRoute();
+
   const apiUrl = computed(() => route.query.apiUrl as string);
   const assistantId = computed(() => route.query.assistantId as string);
   const threadId = computed(() => route.query.threadId as string);
-  
+
   // API key management
   const apiKey = ref<string | null>(getApiKey());
-  
+
   const setApiKey = (key: string) => {
     window.localStorage.setItem("lg:chat:apiKey", key);
     apiKey.value = key;
@@ -91,20 +93,24 @@ function useApiConnection() {
 
   // Check connection status
   const checkConnection = () => {
-    watch([apiUrl, apiKey], ([newApiUrl, newApiKey]) => {
-      if (newApiUrl) {
-        checkGraphStatus(newApiUrl, newApiKey).then((ok) => {
-          if (!ok) {
-            toast.error("Failed to connect to LangGraph server", {
-              description: `Please ensure your graph is running at ${newApiUrl} and your API key is correctly set (if connecting to a deployed graph).`,
-              duration: 10000,
-              richColors: true,
-              closeButton: true,
-            });
-          }
-        });
-      }
-    }, { immediate: true });
+    watch(
+      [apiUrl, apiKey],
+      ([newApiUrl, newApiKey]) => {
+        if (newApiUrl) {
+          checkGraphStatus(newApiUrl, newApiKey).then((ok) => {
+            if (!ok) {
+              toast.error("Failed to connect to LangGraph server", {
+                description: `Please ensure your graph is running at ${newApiUrl} and your API key is correctly set (if connecting to a deployed graph).`,
+                duration: 10000,
+                richColors: true,
+                closeButton: true,
+              });
+            }
+          });
+        }
+      },
+      { immediate: true }
+    );
   };
 
   return {
@@ -113,7 +119,7 @@ function useApiConnection() {
     setApiKey,
     assistantId,
     threadId,
-    checkConnection
+    checkConnection,
   };
 }
 
@@ -127,32 +133,26 @@ function useThreadHandling() {
     // Update the URL with the thread ID
     const newQuery = { ...route.query, threadId: id };
     router.push({ query: newQuery });
-    
+
     // Refetch threads list when thread ID changes
     sleep().then(() => threadsManager.getThreads().catch(console.error));
   };
 
   return {
     updateThreadId,
-    threadsManager
+    threadsManager,
   };
 }
 
 // --- Main shared composable ---
 export const useStream = createSharedComposable(() => {
   // Connection handling
-  const { 
-    apiUrl, 
-    apiKey, 
-    setApiKey, 
-    assistantId, 
-    threadId,
-    checkConnection 
-  } = useApiConnection();
-  
+  const { apiUrl, apiKey, setApiKey, assistantId, threadId, checkConnection } =
+    useApiConnection();
+
   // Thread handling
   const { updateThreadId } = useThreadHandling();
-  
+
   // Check API connection
   checkConnection();
 
@@ -161,17 +161,20 @@ export const useStream = createSharedComposable(() => {
     apiUrl: apiUrl.value,
     apiKey: apiKey.value ?? undefined,
     assistantId: assistantId.value,
-    threadId: threadId ?? null,
+    threadId: threadId.value ?? null,
     onCustomEvent: (event: UIMessage | RemoveUIMessage, options: any) => {
       options.mutate((prev: StateType) => {
         const ui = uiMessageReducer(prev.ui ?? [], event);
         return { ...prev, ui };
       });
     },
-    onThreadId: updateThreadId
-  });;
+    onThreadId: updateThreadId,
+  });
 
-  
+  watch(threadId, (newThreadId) => {
+    streamValue.onThreadId(newThreadId);
+  });
+
   // Return reactive stream interface
   return toReactive({
     apiUrl,
@@ -181,6 +184,3 @@ export const useStream = createSharedComposable(() => {
     stream: toReactive(streamValue),
   });
 });
-
-
-

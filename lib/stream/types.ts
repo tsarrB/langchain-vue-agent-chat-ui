@@ -5,18 +5,29 @@ import type { SequenceNode } from "./branches";
 /**
  * Options for the stream functionality
  */
-export interface StreamOptions<TValues = any, TUpdateType = any, TCustomEventType = any> {
+export interface StreamOptions<
+  TValues = any,
+  TUpdateType = any,
+  TCustomEventType = any
+> {
   apiUrl: string;
   apiKey?: string;
   assistantId: string;
-  threadId?: MaybeRef<string | null>;
+  threadId?: string | null;
   messagesKey?: string;
   onError?: (error: Error) => void;
   onFinish?: (state: any) => void;
   onUpdateEvent?: (data: TUpdateType) => void;
-  onCustomEvent?: (data: TCustomEventType, options: { 
-    mutate: (updater: ((prev: TValues) => Partial<TValues> | TValues) | Partial<TValues>) => void 
-  }) => void;
+  onCustomEvent?: (
+    data: TCustomEventType,
+    options: {
+      mutate: (
+        updater:
+          | ((prev: TValues) => Partial<TValues> | TValues)
+          | Partial<TValues>
+      ) => void;
+    }
+  ) => void;
   onMetadataEvent?: (data: any) => void;
   onThreadId?: (threadId: string) => void;
   callerOptions?: Record<string, any>;
@@ -37,7 +48,9 @@ export interface SubmitOptions {
   multitaskStrategy?: string;
   onCompletion?: any;
   onDisconnect?: string;
-  optimisticValues?: Record<string, any> | ((values: Record<string, any>) => Record<string, any>);
+  optimisticValues?:
+    | Record<string, any>
+    | ((values: Record<string, any>) => Record<string, any>);
 }
 
 /**
@@ -54,8 +67,9 @@ export interface StreamInterface<T = any> {
   experimental_branchTree: ComputedRef<SequenceNode>;
   interrupt: any;
   messages: any[];
+  onThreadId: (threadId: string) => void;
   stop: () => void;
   submit: (values: any, submitOptions?: SubmitOptions) => Promise<void>;
   setBranch: (newBranch: string) => void;
   getMessagesMetadata: (message: any, index?: number) => any;
-} 
+}

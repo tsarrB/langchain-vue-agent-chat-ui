@@ -59,7 +59,7 @@ export function useThreadHistory(
 }
 
 export interface UseControllableThreadIdOptions {
-  threadId?: MaybeRef<string | null>;
+  threadId?: string | null;
   onThreadId?: (threadId: string) => void;
 }
 
@@ -69,19 +69,13 @@ export interface UseControllableThreadIdOptions {
 export function useControllableThreadId(
   options?: UseControllableThreadIdOptions
 ): [Ref<string | null>, (threadId: string) => void] {
-  const threadId = toRef(options?.threadId);
-
-  const localThreadId = ref<string | null>(threadId.value ?? null);
+  const localThreadId = ref<string | null>(options?.threadId ?? null);
   const onThreadIdCallback = options?.onThreadId;
 
   const onThreadId = (threadId: string): void => {
     localThreadId.value = threadId;
     onThreadIdCallback?.(threadId);
   };
-
-  watch(threadId, (newThreadId) => {
-    localThreadId.value = newThreadId ?? null;
-  });
 
   return [localThreadId, onThreadId];
 }
