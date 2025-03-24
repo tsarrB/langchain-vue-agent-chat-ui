@@ -1,26 +1,28 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import type { Message } from '@langchain/langgraph-sdk';
-import { getContentString } from '../utils';
-import { cn } from '@/lib/utils';
-import EditableContent from './EditableContent.vue';
-import { useStream } from '~/composables/useStream';
+import { ref, computed } from "vue";
+import type { Message } from "@langchain/langgraph-sdk";
+import { getContentString } from "../utils";
+import EditableContent from "./EditableContent.vue";
+import { useStream } from "~/composables/useStream";
+import CommandBar from "./CommandBar.vue";
+import BranchSwitcher from "./BranchSwitcher.vue";
 
 const props = defineProps<{
   message: Message;
   isLoading: boolean;
 }>();
 
-const {stream: thread} = useStream();
+const { stream: thread } = useStream();
 const meta = computed(() => thread.getMessagesMetadata(props.message));
-const parentCheckpoint = computed(() => meta.value?.firstSeenState?.parent_checkpoint);
+const parentCheckpoint = computed(
+  () => meta.value?.firstSeenState?.parent_checkpoint
+);
 
 const isEditing = ref(false);
-const editValue = ref('');
+const editValue = ref("");
 const contentString = computed(() => getContentString(props.message.content));
 
-function handleSetIsEditing(value: boolean) {
-  isEditing.value = value;
+function handleSetIsEditing(value: boolean | undefined) {
   if (value) {
     editValue.value = contentString.value;
   }
@@ -29,11 +31,11 @@ function handleSetIsEditing(value: boolean) {
 function handleSubmitEdit() {
   isEditing.value = false;
 
-  const newMessage = { 
-    type: "human", 
-    content: editValue.value 
+  const newMessage = {
+    type: "human",
+    content: editValue.value,
   } as Message;
-  
+
   thread.submit(
     { messages: [newMessage] },
     {
@@ -48,16 +50,16 @@ function handleSubmitEdit() {
           messages: [...(values.messages ?? []), newMessage],
         };
       },
-    },
+    }
   );
 }
-</script> 
+</script>
 
 <template>
   <div
     :class="[
       'flex items-center ml-auto gap-2 group',
-      isEditing && 'w-full max-w-xl'
+      isEditing && 'w-full max-w-xl',
     ]"
   >
     <div :class="['flex flex-col gap-2', isEditing && 'w-full']">
@@ -66,10 +68,8 @@ function handleSubmitEdit() {
         v-model="editValue"
         @submit="handleSubmitEdit"
       />
-      <p
-        v-else
-        class="text-right px-4 py-2 rounded-3xl bg-muted"
-      >
+
+      <p v-else class="text-right px-4 py-2 rounded-3xl bg-muted">
         {{ contentString }}
       </p>
 
@@ -77,23 +77,24 @@ function handleSubmitEdit() {
         :class="[
           'flex gap-2 items-center ml-auto transition-opacity',
           'opacity-0 group-focus-within:opacity-100 group-hover:opacity-100',
-          isEditing && 'opacity-100'
+          isEditing && 'opacity-100',
         ]"
       >
-        <!-- <BranchSwitcher
+        <BranchSwitcher
           :branch="meta?.branch"
           :branch-options="meta?.branchOptions"
-          @select="(branch: string) => thread.setBranch(branch)"
           :is-loading="isLoading"
+          @select="(branch: string) => thread.setBranch(branch)"
         />
+
         <CommandBar
+          v-model:isEditing="isEditing"
           :is-loading="isLoading"
           :content="contentString"
-          :is-editing="isEditing"
-          @set-is-editing="handleSetIsEditing"
-          @submit-edit="handleSubmitEdit"
+          @update:is-editing="handleSetIsEditing"
+          :handleSubmitEdit="handleSubmitEdit"
           :is-human-message="true"
-        /> -->
+        />
       </div>
     </div>
   </div>
